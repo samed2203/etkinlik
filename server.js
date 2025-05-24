@@ -18,9 +18,9 @@ async function initialize() {
       }
     );
     ORGANIZATION_ID = orgResponse.data.organizations[0].id;
-    console.log('✅ Organizasyon ID Alındı:', ORGANIZATION_ID);
+    console.log('Organizasyon ID Alındı:', ORGANIZATION_ID);
   } catch (error) {
-    console.error('❌ Hata:', error.response?.data || error.message);
+    console.error('Hata:', error.response?.data || error.message);
     process.exit(1);
   }
 }
