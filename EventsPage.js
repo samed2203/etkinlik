@@ -1,59 +1,86 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const EventsPage = () => {
   const navigate = useNavigate();
-  const API_KEY = 'HT5YAFYXICPQFNZ4HG';
-  const ORGANIZATION_IDS = [ // Sabit değer olduğu için useEffect dependency'ye eklenmesine gerek yok
-    '1366460081889', '1366469289429', 
-    '1366475939319', '1366461666629'
-  ];
+  const API_KEY = 'B5MZ4RBXDUIJXPHI42T2';
+  const ORGANIZATION_ID = '2777943393741';
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchEvents = useCallback(async (orgId) => { // useCallback ile optimize
-    try {
-      const response = await fetch(
-        `https://cors-anywhere.herokuapp.com/https://www.eventbriteapi.com/v3/organizations/${orgId}/events/?token=${API_KEY}`
-      );
-      const data = await response.json();
-      return data.events?.map(event => ({
-        id: event.id,
-        name: event.name.text,
-        date: new Date(event.start.local),
-        location: event.venue?.address?.city || 'Belirtilmemiş',
-        url: event.url
-      })) || [];
-    } catch (err) {
-      console.error(`${orgId} hatası:`, err);
-      return [];
+  // Geliştirilmiş kategorilendirme fonksiyonu
+  const determineCategory = (name, description = '') => {
+    const text = `${name} ${description}`.toLowerCase();
+    
+    // Önce daha spesifik eşleşmeleri kontrol et
+    if (/teknoloji|yazılım|kodlama|programlama|ai|yapay zeka|robotik|veri/i.test(text) && 
+        !/futbol|müzik|doğa/.test(text)) {
+      return 'teknoloji';
     }
-  }, [API_KEY]); // API_KEY dependency olarak eklendi
+    if (/futbol|maç|lig|stadyum|futbolcu|pas|gol|fifa/i.test(text) && 
+        !/teknoloji|müzik|doğa/.test(text)) {
+      return 'futbol';
+    }
+    if (/müzik|konser|şarkı|davul|gitar|piyano|orkestra|bando|dj|albüm/i.test(text) && 
+        !/teknoloji|futbol|doğa/.test(text)) {
+      return 'müzik';
+    }
+    if (/doğa|kamp|şelale|yürüyüş|ağaç|hiking|trekking|dağ|gezi|tabiat/i.test(text) && 
+        !/teknoloji|futbol|müzik/.test(text)) {
+      return 'doğa';
+    }
+    if (/sanat|resim|sergi|heykel|galeri|müze|tablo/i.test(text)) {
+      return 'sanat';
+    }
+    if (/yemek|gurme|şarap|tatlı|restoran|yemek|mutfak|tarif/i.test(text)) {
+      return 'yemek';
+    }
+    
+    return 'diğer';
+  };
 
+  // Etkinlikleri çek
   useEffect(() => {
-    const loadAllEvents = async () => {
+    const fetchEvents = async () => {
       try {
-        const allEvents = await Promise.all(
-          ORGANIZATION_IDS.map(fetchEvents)
+        const response = await axios.get(
+          `https://www.eventbriteapi.com/v3/organizations/${ORGANIZATION_ID}/events/`,
+          {
+            headers: { Authorization: `Bearer ${API_KEY}` }
+          }
         );
-        setEvents(allEvents.flat());
+
+        const categorizedEvents = response.data.events.map(event => {
+          const category = determineCategory(event.name.text, event.description?.text);
+          console.log(`Event: ${event.name.text} | Category: ${category}`); // Debug için
+          
+          return {
+            id: event.id,
+            name: event.name.text,
+            description: event.description?.text || '',
+            category: category,
+            date: new Date(event.start.local),
+            location: event.venue?.address?.city || 'Online',
+            url: event.url
+          };
+        });
+
+        setEvents(categorizedEvents);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-    loadAllEvents();
-  }, [fetchEvents]); // fetchEvents dependency olarak eklendi
 
-  // Emoji erişilebilirliği için wrapper component
-  const AccessibleEmoji = ({ emoji, label }) => (
-    <span role="img" aria-label={label}>
-      {emoji}
-    </span>
-  );
+    fetchEvents();
+  }, []);
+
+  // Kategorilere göre filtreleme
+  const categories = [...new Set(events.map(event => event.category))];
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '50px' }}>
@@ -78,9 +105,28 @@ const EventsPage = () => {
       </button>
 
       <h1 style={{ textAlign: 'center', color: '#2c3e50' }}>
-        <AccessibleEmoji emoji="🎉" label="Parti" /> Tüm Etkinlikler
+        🎉 Tüm Etkinlikler
       </h1>
 
+      {/* Kategori filtreleme */}
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => navigate(-1)}
+          style={{ padding: '8px 16px', backgroundColor: '#f0f0f0', border: 'none', borderRadius: '4px' }}
+        >
+          Tümü
+        </button>
+        {categories.map(category => (
+          <button
+            key={category}
+            style={{ padding: '8px 16px', backgroundColor: '#f0f0f0', border: 'none', borderRadius: '4px' }}
+          >
+            {category.charAt(0).toUpperCase() + category.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Etkinlik listesi */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
@@ -98,10 +144,20 @@ const EventsPage = () => {
               transform: 'translateY(-5px)'
             }
           }}>
+            <div style={{ 
+              backgroundColor: getCategoryColor(event.category),
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              display: 'inline-block',
+              marginBottom: '8px',
+              fontSize: '12px'
+            }}>
+              {event.category.toUpperCase()}
+            </div>
             <h3 style={{ marginTop: 0, color: '#3498db' }}>{event.name}</h3>
             <p style={{ color: '#7f8c8d' }}>
-              <AccessibleEmoji emoji="📅" label="Takvim" />
-              {event.date.toLocaleDateString('tr-TR', {
+              📅 {event.date.toLocaleDateString('tr-TR', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -111,8 +167,7 @@ const EventsPage = () => {
               })}
             </p>
             <p style={{ color: '#2c3e50' }}>
-              <AccessibleEmoji emoji="📍" label="Konum" />
-              {event.location}
+              📍 {event.location}
             </p>
             <a
               href={event.url}
@@ -129,13 +184,26 @@ const EventsPage = () => {
                 marginTop: '15px'
               }}
             >
-              Bilet Al <AccessibleEmoji emoji="🎟️" label="Bilet" />
+              Bilet Al 🎟️
             </a>
           </div>
         ))}
       </div>
     </div>
   );
+};
+
+// Kategoriye göre renk belirleme
+const getCategoryColor = (category) => {
+  switch(category) {
+    case 'futbol': return '#e74c3c';
+    case 'teknoloji': return '#3498db';
+    case 'müzik': return '#9b59b6';
+    case 'doğa': return '#2ecc71';
+    case 'sanat': return '#e67e22';
+    case 'yemek': return '#f1c40f';
+    default: return '#95a5a6';
+  }
 };
 
 export default EventsPage;

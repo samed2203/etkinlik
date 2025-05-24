@@ -1,125 +1,204 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
 import axios from 'axios';
+import weatherData from './weatherData.json'; // JSON dosyasını import ediyoruz
 
-const MainPage = () => {
-  const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [userInterests, setUserInterests] = useState([]);
-  const [loading, setLoading] = useState(true);
+const API_KEY = 'B5MZ4RBXDUIJXPHI42T2';
+const ORGANIZATION_ID = '2777943393741';
 
-  // Kullanıcı ilgi alanlarını çek
-  useEffect(() => {
-    const fetchUserInterests = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('interests')
-          .eq('id', user.id)
-          .single();
-        setUserInterests(data?.interests || []);
-      }
-    };
-    fetchUserInterests();
-  }, []);
+const determineCategory = (name) => {
+  const text = name.toLowerCase();
 
-  // Etkinlikleri çek
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const response = await axios.get(
-          'https://www.eventbriteapi.com/v3/organizations/2765630633551/events/',
-          {
-            headers: { Authorization: 'Bearer VKTAGDZQDLUFXYSZ4LZ5' }
-          }
-        );
-        
-        setEvents(response.data.events.map(event => ({
-          id: event.id,
-          name: event.name.text,
-          description: event.description?.text || '',
-          category: determineCategory(event.name.text, event.description?.text),
-          date: new Date(event.start.local),
-          location: event.venue?.address?.city || 'Online',
-          url: event.url
-        })));
-      } catch (error) {
-        console.error('Error fetching events:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvents();
-  }, []);
+  if (/(teknolojik|yazılım|kodlama|programlama|ai|yapay zeka|robotik|veri)/.test(text)) return 'teknoloji';
+  if (/(futbol|maç|lig|stadyum|gol|fifa)/.test(text)) return 'futbol';
+  if (/(müzik|konser|şarkı|gitar|piyano|orkestra|dj|albüm)/.test(text)) return 'müzik';
+  if (/(doğa|kamp|şelale|yürüyüş|ağaç|dağ|gezi|tabiat)/.test(text)) return 'doğa';
+  if (/(sanat|resim|sergi|heykel|galeri|müze|tablo)/.test(text)) return 'sanat';
+  if (/(yemek|gurme|şarap|restoran|mutfak|tarif)/.test(text)) return 'yemek';
 
-  // Etkinlik kategorisini belirleme
-  const determineCategory = (name, description) => {
-    const text = `${name} ${description}`.toLowerCase();
-    if (/futbol|spor|maç|futbolcu|stadyum/i.test(text)) return 'futbol';
-    if (/teknoloji|yazılım|kod|programlama|ai/i.test(text)) return 'teknoloji';
-    if (/doğa|kamp|şelale|yürüyüş|ağaç/i.test(text)) return 'doğa';
-    if (/müzik|konser|şarkı|davul|gitar/i.test(text)) return 'müzik';
-    return 'diğer';
+  return 'diğer';
+};
+
+const categoryColors = {
+  futbol: '#e74c3c',
+  teknoloji: '#3498db',
+  müzik: '#9b59b6',
+  doğa: '#2ecc71',
+  sanat: '#e67e22',
+  yemek: '#f1c40f',
+  diğer: '#95a5a6',
+};
+
+const getWeatherStatus = (eventDate, weatherData) => {
+  const dateStr = eventDate.toISOString().split('T')[0];
+  const weather = weatherData.find(w => w.date === dateStr);
+  
+  if (!weather) return null;
+  
+  return {
+    suitable: !weather.rain && weather.wind < 20,
+    temperature: weather.temperature,
+    condition: weather.condition,
+    rain: weather.rain,
+    wind: weather.wind
   };
+};
 
-  // İlgi alanına göre öneriler
-  const getRecommendedEvents = () => {
-    if (userInterests.length === 0) return events.slice(0, 3);
-    
-    return events.filter(event => 
-      userInterests.some(interest => 
-        event.category === interest.toLowerCase()
-      )
-    ).slice(0, 4);
-  };
-
-  // Kategoriye göre filtreleme
-  const filterByCategory = (category) => {
-    return events.filter(event => event.category === category).slice(0, 3);
-  };
-
-  if (loading) return <div>Yükleniyor...</div>;
-
+const WeatherAlert = ({ weather }) => {
+  if (!weather) return null;
+  
   return (
-    <div className="container mx-auto p-4">
-      {/* Önerilen Etkinlikler */}
-      <section className="mb-8">
-        <h2 className="text-xl font-bold mb-4">⭐ Sizin İçin Öneriler</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {getRecommendedEvents().map(event => (
-            <div key={event.id} className="border rounded-lg p-4 hover:shadow-md">
-              <h3 className="font-semibold">{event.name}</h3>
-              <p className="text-sm text-gray-600">{event.date.toLocaleDateString('tr-TR')}</p>
-              <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-sm">Detaylar</a>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Kategorilere Göre Etkinlikler */}
-      <section>
-        <h2 className="text-xl font-bold mb-4">🏷️ Kategoriler</h2>
-        <div className="space-y-6">
-          {['futbol', 'teknoloji', 'doğa', 'müzik'].map(category => (
-            <div key={category}>
-              <h3 className="font-semibold capitalize mb-2">{category}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {filterByCategory(category).map(event => (
-                  <div key={event.id} className="border p-3 rounded">
-                    <p className="font-medium">{event.name}</p>
-                    <p className="text-xs">{event.location}</p>
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs">Detaylar</a>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+    <div style={{ 
+      marginTop: '5px',
+      padding: '5px',
+      backgroundColor: weather.suitable ? '#e8f5e9' : '#ffebee',
+      borderRadius: '4px',
+      borderLeft: `3px solid ${weather.suitable ? '#4caf50' : '#f44336'}`
+    }}>
+      {weather.suitable ? (
+        <span style={{ color: '#2e7d32' }}>✅ Bu etkinlik için hava durumu uygun: {weather.condition}, {weather.temperature}°C, Rüzgar: {weather.wind} km/s</span>
+      ) : (
+        <span style={{ color: '#c62828' }}>⚠️ Bu etkinlik hava koşulları nedeniyle iptal olabilir: {weather.condition}, {weather.temperature}°C, Rüzgar: {weather.wind} km/s, {weather.rain ? 'Yağmur bekleniyor' : ''}</span>
+      )}
     </div>
   );
 };
 
-export default MainPage; // ← BU SATIRI EKLEDİM
+const MainPage = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [showCategory, setShowCategory] = useState(false);
+  const [showByDate, setShowByDate] = useState(false);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await axios.get(
+          `https://www.eventbriteapi.com/v3/organizations/${ORGANIZATION_ID}/events/`,
+          { headers: { Authorization: `Bearer ${API_KEY}` } }
+        );
+
+        const evts = res.data.events.map(evt => ({
+          id: evt.id,
+          name: evt.name.text,
+          date: new Date(evt.start.local),
+          url: evt.url,
+          category: determineCategory(evt.name.text),
+        }));
+
+        setEvents(evts);
+      } catch (err) {
+        setError('Etkinlikler alınamadı.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  if (loading) return <div style={{ padding: 20 }}>Etkinlikler yükleniyor...</div>;
+  if (error) return <div style={{ padding: 20, color: 'red' }}>{error}</div>;
+
+  // Kategorilere göre grupla
+  const categories = [...new Set(events.map(e => e.category))];
+
+  // Tarihe göre sıralanmış liste
+  const eventsByDate = [...events].sort((a, b) => a.date - b.date);
+
+  return (
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
+      <h1 style={{ marginBottom: 20 }}>⭐ Etkinlik Listesi</h1>
+
+      {/* Toggle başlıkları */}
+      <h2
+        style={{ cursor: 'pointer', color: '#3498db', userSelect: 'none' }}
+        onClick={() => {
+          setShowCategory(!showCategory);
+          if (showByDate) setShowByDate(false);
+        }}
+      >
+        ⭐ Sizin İçin Öneriler {showCategory ? '▲' : '▼'}
+      </h2>
+
+      {showCategory && (
+        <>
+          {categories.map(cat => (
+            <div key={cat} style={{ marginBottom: 30 }}>
+              <h3 style={{ color: categoryColors[cat], textTransform: 'capitalize' }}>
+                🏷️ {cat} ({events.filter(e => e.category === cat).length})
+              </h3>
+              <ul>
+                {events
+                  .filter(e => e.category === cat)
+                  .map(e => {
+                    const weather = getWeatherStatus(e.date, weatherData);
+                    return (
+                      <li key={e.id} style={{ marginBottom: 8 }}>
+                        <a
+                          href={e.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontWeight: 'bold', color: '#333' }}
+                        >
+                          {e.name}
+                        </a>{' '}
+                        <br />
+                        {e.date.toLocaleDateString('tr-TR')}
+                        <br />
+                        <a href={e.url} target="_blank" rel="noopener noreferrer">
+                          Detaylar
+                        </a>
+                        <WeatherAlert weather={weather} />
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
+
+      <h2
+        style={{ cursor: 'pointer', color: '#3498db', userSelect: 'none' }}
+        onClick={() => {
+          setShowByDate(!showByDate);
+          if (showCategory) setShowCategory(false);
+        }}
+      >
+        📅 Tarihe Göre Sıralama {showByDate ? '▲' : '▼'}
+      </h2>
+
+      {showByDate && (
+        <ul style={{ marginTop: 10 }}>
+          {eventsByDate.map(e => {
+            const weather = getWeatherStatus(e.date, weatherData);
+            return (
+              <li key={e.id} style={{ marginBottom: 12 }}>
+                <a
+                  href={e.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontWeight: 'bold', color: '#333' }}
+                >
+                  {e.name}
+                </a>{' '}
+                <br />
+                {e.date.toLocaleDateString('tr-TR')}
+                <br />
+                <a href={e.url} target="_blank" rel="noopener noreferrer">
+                  Detaylar
+                </a>
+                <WeatherAlert weather={weather} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+export default MainPage;

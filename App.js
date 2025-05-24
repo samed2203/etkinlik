@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from './supabaseClient';
@@ -6,8 +5,7 @@ import AuthPage from "./AuthPage";
 import LoginPage from "./LoginPage";
 import PasswordChangePage from "./PasswordChangePage";
 import HomePage from "./HomePage";
-import MainPage from "./MainPage"; // Yeni eklenen sayfa
-import EventsPage from './EventsPage';
+import MainPage from "./MainPage"; // Artık tüm etkinlik işlevleri burada
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -77,10 +75,7 @@ function App() {
           path="/main" 
           element={isAuthenticated ? <MainPage /> : <Navigate to="/login" />} 
         />
-        <Route 
-          path="/events" 
-          element={isAuthenticated ? <EventsPage /> : <Navigate to="/login" />}
-        />
+        {/* EventsPage route'unu kaldırdık çünkü artık MainPage içinde */}
       </Routes>
     </Router>
   );
