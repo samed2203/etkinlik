@@ -16,7 +16,7 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Supabase ile giriş yap
+     
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -24,7 +24,7 @@ function LoginPage() {
 
       if (authError) throw authError;
 
-      // 2. Kullanıcı profil bilgilerini çek
+      
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -33,13 +33,13 @@ function LoginPage() {
 
       if (profileError) throw profileError;
 
-      // 3. Yönetici onayı kontrolü
+      
       if (!profile.is_approved) {
         await supabase.auth.signOut();
         throw new Error('Hesabınız henüz yönetici tarafından onaylanmadı.');
       }
 
-      // 4. Şifre değişikliği kontrolü
+      
       if (profile?.must_change_password === true || profile?.first_login === true) {
         navigate('/change-password');
       } else {

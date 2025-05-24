@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(false); // Varsayılan: Kayıt formu
+  const [isLogin, setIsLogin] = useState(false); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -23,7 +23,7 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        // Giriş yapma işlemi
+       
         const { error: authError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -32,7 +32,7 @@ const AuthPage = () => {
         if (authError) throw authError;
         navigate('/home');
       } else {
-        // Kayıt olma işlemi
+        
         if (password.length < 6) {
           throw new Error('Şifre en az 6 karakter olmalıdır');
         }
@@ -60,7 +60,7 @@ const AuthPage = () => {
             must_change_password: true
           }]);
 
-        // Kullanıcı bilgilerini localStorage'a kaydet
+       
         localStorage.setItem("user", JSON.stringify({
           id: authData.user.id,
           full_name: fullName,
@@ -71,7 +71,7 @@ const AuthPage = () => {
         }));
 
         alert('Kayıt başarılı! Yönetici onayından sonra giriş yapabilirsiniz.');
-        setIsLogin(true); // Kayıt sonrası giriş formuna geç
+        setIsLogin(true); 
       }
     } catch (error) {
       setError(error.message || 'Bir hata oluştu');
@@ -194,7 +194,7 @@ const AuthPage = () => {
               marginTop: '0.25rem',
               color: '#7f8c8d'
             }}>
-              Şifre en az 6 karakter olmalıdır
+              
             </small>
           )}
         </div>

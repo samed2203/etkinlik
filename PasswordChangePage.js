@@ -33,21 +33,20 @@ function PasswordChangePage() {
     }
 
     try {
-      // 1. Önce mevcut oturumu kontrol et
+     
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
         throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
       }
 
-      // 2. Şifreyi güncelle
+      
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
 
       if (updateError) throw updateError;
 
-      // 3. Profil bilgilerini güncelle
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -58,23 +57,22 @@ function PasswordChangePage() {
 
       if (profileError) throw profileError;
 
-      // 4. LocalStorage'ı güncelle
+      
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      // handleSubmit fonksiyonunda localStorage güncelleme kısmını değiştirin
+      
       localStorage.setItem("user", JSON.stringify({
       ...profile,
-      must_change_password: false,  // mustChangePassword yerine must_change_password
+      must_change_password: false, 
       first_login: false
     }));
 
       setSuccess('Şifreniz başarıyla güncellendi! Anasayfaya yönlendiriliyorsunuz...');
-      
-      // 3 saniye sonra yönlendir
+ 
       setTimeout(() => {
         navigate('/home');
       }, 3000);

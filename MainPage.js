@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import weatherData from './weatherData.json'; // JSON dosyasını import ediyoruz
-
+import weatherData from './weatherData.json'; 
 const API_KEY = 'B5MZ4RBXDUIJXPHI42T2';
 const ORGANIZATION_ID = '2777943393741';
 

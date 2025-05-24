@@ -5,7 +5,7 @@ import AuthPage from "./AuthPage";
 import LoginPage from "./LoginPage";
 import PasswordChangePage from "./PasswordChangePage";
 import HomePage from "./HomePage";
-import MainPage from "./MainPage"; // Artık tüm etkinlik işlevleri burada
+import MainPage from "./MainPage";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -75,7 +75,7 @@ function App() {
           path="/main" 
           element={isAuthenticated ? <MainPage /> : <Navigate to="/login" />} 
         />
-        {/* EventsPage route'unu kaldırdık çünkü artık MainPage içinde */}
+        
       </Routes>
     </Router>
   );
